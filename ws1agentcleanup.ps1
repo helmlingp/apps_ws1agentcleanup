@@ -2,7 +2,8 @@
     .Synopsis
       Script to uninstall and cleanup WorkspaceONE Agent and residual items for testing/re-testing purposes
     .NOTES
-	  Created:      September, 2019
+    Created:      September, 2019
+    Updated:      January, 2021
 	  Created by:   Phil Helmling, @philhelmling
 	  Organization: VMware, Inc.
 	  Filename:     ws1agentcleanup.ps1
@@ -13,7 +14,7 @@
 #>
 
 #Uninstall Agent - requires manual delete of device object in console
-$b = Get-WmiObject -Class Win32_Product | Where-Object {$_.Name -eq "Workspace ONE Intelligent Hub Installer"}
+$b = Get-WmiObject -Class win32_product -Filter "Name like 'Workspace ONE Intelligent%'"
 $b.Uninstall()
 
 #uninstall WS1 App
