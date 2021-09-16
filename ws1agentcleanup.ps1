@@ -14,7 +14,7 @@
 #>
 
 #Uninstall Agent - requires manual delete of device object in console
-$b = Get-WmiObject -Class win32_product -Filter "Name like 'Workspace ONE Intelligent%'"
+$b = Get-WmiObject -Class win32_product -Filter "Name like '%Workspace ONE%'"
 $b.Uninstall()
 
 #uninstall WS1 App
@@ -24,6 +24,8 @@ Get-AppxPackage *AirWatchLLC* | Remove-AppxPackage
 Remove-Item -Path HKLM:\SOFTWARE\Airwatch\* -Recurse -Force
 Remove-Item -Path HKLM:\SOFTWARE\AirwatchMDM\* -Recurse -Force
 Remove-Item -Path HKLM:\SOFTWARE\Microsoft\EnterpriseResourceManager\Tracked\* -Recurse -Force
+
+#get enrolment SID in Airwatch key and find that in the enrollments key - do we need to?
 Remove-Item -Path HKLM:\SOFTWARE\Microsoft\Enrollments\* -Recurse -Force
 Remove-Item -Path HKLM:\SOFTWARE\Microsoft\Provisioning\omadm\Accounts\* -Recurse -Force
 # may not work ;)
