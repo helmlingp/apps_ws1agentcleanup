@@ -13,14 +13,24 @@
     powershell.exe -executionpolicy bypass -file .\ws1agentcleanup.ps1
 #>
 
-#Uninstall Agent - requires manual delete of device object in console
-$b = Get-WmiObject -Class win32_product -Filter "Name like '%Workspace ONE%'"
-$b.Uninstall()
 
-#uninstall WS1 App
-Get-AppxPackage *AirWatchLLC* | Remove-AppxPackage
+function Remove-App {
+  param (
+    [string] $appname
+  )
+  $app = (Get-AppxPackage | Where-Object {$_.Name -like $appname}).PackageFullName
+  if ($app -ne $null) {
+    Remove-AppxPackage -Package $app -AllUsers -Force
+  } else {
+    $app = Get-WmiObject -Class Win32_Product -Filter "Name like ""$appname"""
+    if ($app -ne $null) {
+      $app.Uninstall()
+    }
+  }
+}
 
-function Remove-RegPath {
+
+function Remove-Path {
   param (
     [string]$path
   )
@@ -29,27 +39,34 @@ function Remove-RegPath {
   }
 }
 
-$regpaths2remove = @(
-  #delete Airwatch Agent keys
-  "HKLM:\SOFTWARE\Airwatch\*"
-  "HKLM:\SOFTWARE\AirwatchMDM\*"
-  "HKLM\SOFTWARE\WorkspaceONE\*"
-  #Delete OMA-DM keys
-  "HKLM:\SOFTWARE\Microsoft\EnterpriseResourceManager\Tracked\*"
-  "HKLM:\SOFTWARE\Microsoft\Enrollments\*"
-  "HKLM:\SOFTWARE\Microsoft\Provisioning\omadm\Accounts\*"
-  #Delete OMA-DM apps and SFD apps keys
-  "HKLM:\SOFTWARE\Microsoft\EnterpriseDesktopAppManagement\*\MSI\*"
-)
-
-function Remove-FilePath {
+function Remove-Cert {
   param (
-    [string]$path
+    [string]$certname
   )
-  if (Get-Item $path) {
-    Get-ChildItem $path -Recurse | Remove-Item -Recurse -Force -ErrorAction Continue | Out-Null
+ 
+  $certs = Get-ChildItem cert: -Recurse | Where-Object {$_.Issuer -eq "$certname"}
+  foreach ($cert in $certs) {
+      Remove-Item -Path $cert -Force -ErrorAction Continue | Out-Null
   }
 }
+
+$apps2remove = @(
+  "%Workspace ONE%"
+  "*AirWatchLLC*"
+)
+
+$regpaths2remove = @(
+  #delete Airwatch Agent keys
+  "HKLM:\SOFTWARE\Airwatch"
+  "HKLM:\SOFTWARE\AirwatchMDM"
+  "HKLM\SOFTWARE\WorkspaceONE"
+  #Delete OMA-DM keys
+  "HKLM:\SOFTWARE\Microsoft\EnterpriseResourceManager\Tracked"
+  "HKLM:\SOFTWARE\Microsoft\Enrollments"
+  "HKLM:\SOFTWARE\Microsoft\Provisioning\omadm\Accounts"
+  #Delete OMA-DM apps and SFD apps keys
+  "HKLM:\SOFTWARE\Microsoft\EnterpriseDesktopAppManagement\*\MSI"
+)
 
 $filepaths2remove = @(
   "$env:ProgramData\AirWatch"
@@ -60,59 +77,24 @@ $filepaths2remove = @(
   "$env:ProgramFiles(x86)\Airwatch"
 )
 
-function Remove-Cert {
-  param (
-    [string]$certname
-  )
- 
-  $certs = Get-ChildItem cert: -Recurse | Where-Object {$_.Issuer -eq "$certname"}
-  foreach ($cert in $certs) {
-      #$cert | Remove-Item -Force -ErrorAction Continue | Out-Null
-      Write-Host $c
-  }
-}
-
 $certs2remove = @(
   "*AirWatchCA*"
   "*AwDeviceRoot*"
 )
 
 #Main
+foreach ($app in $apps2remove) {
+  Remove-App $appname
+}
+
 foreach ($path in $regpaths2remove) {
-  Remove-RegPath $path
+  Remove-Path $path
 }
 
 foreach ($path in $filepaths2remove) {
-  Remove-FilePath $path
+  Remove-Path $path
 }
 
 foreach ($cert in $certs2remove) {
   Remove-Cert $cert
 }
-
-<# #Delte reg keys
-Remove-Item -Path HKLM:\SOFTWARE\Airwatch\* -Recurse -Force
-Remove-Item -Path HKLM:\SOFTWARE\AirwatchMDM\* -Recurse -Force
-Remove-Item -Path HKLM:\SOFTWARE\Microsoft\EnterpriseResourceManager\Tracked\* -Recurse -Force
-
-#get enrolment SID in Airwatch key and find that in the enrollments key - do we need to?
-Remove-Item -Path HKLM:\SOFTWARE\Microsoft\Enrollments\* -Recurse -Force
-Remove-Item -Path HKLM:\SOFTWARE\Microsoft\Provisioning\omadm\Accounts\* -Recurse -Force
-# may not work ;)
-Remove-Item -Path HKLM:\SOFTWARE\Microsoft\EnterpriseDesktopAppManagement\*\MSI\* -Recurse -Force
- 
-#Delete folders
-$path = "$env:ProgramData\AirWatch\UnifiedAgent\Logs\"
-Get-ChildItem $path -Recurse | Remove-Item -Recurse -Force
- 
-#Delete certificates
-$Certs = get-childitem cert:"CurrentUser" -Recurse
-$AirwatchCert = $certs | Where-Object {$_.Issuer -eq "CN=AirWatchCa"}
-foreach ($Cert in $AirwatchCert) {
-    $cert | Remove-Item -Force
-}
- 
-$AirwatchCert = $certs | Where-Object {$_.Subject -like "*AwDeviceRoot*"}
-foreach ($Cert in $AirwatchCert) {
-    $cert | Remove-Item -Force
-} #>
